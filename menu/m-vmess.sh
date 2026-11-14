@@ -1,0 +1,28 @@
+#!/bin/bash
+MYIP=$(wget -qO- ipv4.icanhazip.com);
+echo "Checking VPS"
+clear
+echo -e "\e[33m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\033[0m"
+echo -e "\e[33m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\033[0m"
+echo -e ""
+echo -e " [\e[36m•1\e[0m] Create Account Vmess "
+echo -e " [\e[36m•2\e[0m] Create Account Vmess XHTTP "
+echo -e " [\e[36m•3\e[0m] View Account Vmess "
+echo -e " [\e[36m•4\e[0m] Delete Account Vmess "
+echo -e ""
+echo -e " [\e[31m•0\e[0m] \e[31mBACK TO SENSI MENU\033[0m"
+echo -e ""
+echo -e   "Press x or [ Ctrl+C ] • To-Exit"
+echo ""
+echo -e "\e[33m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\033[0m"
+echo -e ""
+read -p " Select menu :  "  opt
+echo -e ""
+case $opt in
+1) clear ; add-ws ; exit ;;
+2) clear ; add-http ; exit ;;
+3) clear ; view-acc vmess ; exit ;;
+4) clear ; del-ws ; exit ;;
+0) clear ; menu ; exit ;;
+x) exit ;;
+esac
