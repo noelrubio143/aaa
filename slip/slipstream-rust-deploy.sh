@@ -1020,6 +1020,7 @@ write_nat_apply_script() {
 
 CONF_DIR="/etc/slipstream-rust"
 CHAIN="SLIPSTREAM_DNS"
+RATE_CHAIN="SLIPSTREAM_DNS_RATE"
 SSH_PORT_SLIP=5300
 XRAY_PORT_SLIP=5301
 OVPN_PORT_SLIP=5302
@@ -1074,10 +1075,13 @@ for ipt in iptables ip6tables; do
     command -v "$ipt" &>/dev/null || continue
     if [ "$ipt" = "ip6tables" ] && [ ! -f /proc/net/if_inet6 ]; then continue; fi
 
-    # --- cleanup: current chain + the legacy catch-all rule of older versions
+    # --- cleanup: current chains + the legacy catch-all rule of older versions
     while $ipt -t nat -D PREROUTING -i "$IFACE" -p udp --dport 53 -j "$CHAIN" 2>/dev/null; do :; done
     $ipt -t nat -F "$CHAIN" 2>/dev/null
     $ipt -t nat -X "$CHAIN" 2>/dev/null
+    while $ipt -t raw -D PREROUTING -i "$IFACE" -p udp --dport 53 -j "$RATE_CHAIN" 2>/dev/null; do :; done
+    $ipt -t raw -F "$RATE_CHAIN" 2>/dev/null
+    $ipt -t raw -X "$RATE_CHAIN" 2>/dev/null
     while $ipt -t nat -D PREROUTING -i "$IFACE" -p udp --dport 53 -j REDIRECT --to-ports "$SSH_PORT_SLIP" 2>/dev/null; do :; done
     for p in "$SSH_PORT_SLIP" "$XRAY_PORT_SLIP" "$OVPN_PORT_SLIP"; do
         while $ipt -D INPUT -p udp --dport "$p" -j ACCEPT 2>/dev/null; do :; done
@@ -1085,24 +1089,31 @@ for ipt in iptables ip6tables; do
 
     [ "${#rules[@]}" -gt 0 ] || continue
 
-    # --- rebuild
+    # --- rebuild: rate limit first, in the raw table (runs before conntrack
+    # and before nat, and - unlike nat - DROP is actually allowed there).
+    # Anything over RATE_LIMIT_QPS/sec per source IP (with a burst
+    # allowance) never reaches the nat table's domain-match rules below,
+    # so a single abusive/misbehaving client can't flood them.
+    if $ipt -t raw -N "$RATE_CHAIN" 2>/dev/null; then
+        if $ipt -t raw -A "$RATE_CHAIN" -p udp \
+            -m hashlimit --hashlimit-above "${RATE_LIMIT_QPS}/sec" \
+            --hashlimit-burst "$RATE_LIMIT_BURST" --hashlimit-mode srcip \
+            --hashlimit-name "$RATE_LIMIT_NAME" --hashlimit-htable-expire 10000 \
+            -j DROP 2>/dev/null; then
+            $ipt -t raw -I PREROUTING -i "$IFACE" -p udp --dport 53 -j "$RATE_CHAIN" 2>/dev/null \
+                || { [ "$ipt" = "iptables" ] && echo "could not hook rate-limit chain into raw PREROUTING" >&2; }
+        else
+            [ "$ipt" = "iptables" ] && echo "xt_hashlimit not available - rate limiting disabled on this kernel" >&2
+            $ipt -t raw -X "$RATE_CHAIN" 2>/dev/null
+        fi
+    fi
+
+    # --- rebuild: nat table only does the domain-match redirect (DROP is
+    # not permitted in the nat table, which is why rate limiting lives above)
     if ! $ipt -t nat -N "$CHAIN" 2>/dev/null; then
         [ "$ipt" = "iptables" ] && { echo "cannot create nat chain $CHAIN" >&2; rc=1; }
         continue
     fi
-    # Per-source-IP rate limit: anything over RATE_LIMIT_QPS/sec (with a
-    # RATE_LIMIT_BURST allowance) is dropped here, before it ever reaches
-    # the per-byte string match below. This is what keeps a single abusive
-    # or misbehaving client from being able to flood the domain-match
-    # rules or the slipstream-server process behind them.
-    if ! $ipt -t nat -A "$CHAIN" -p udp \
-        -m hashlimit --hashlimit-above "${RATE_LIMIT_QPS}/sec" \
-        --hashlimit-burst "$RATE_LIMIT_BURST" --hashlimit-mode srcip \
-        --hashlimit-name "$RATE_LIMIT_NAME" --hashlimit-htable-expire 10000 \
-        -j DROP 2>/dev/null; then
-        [ "$ipt" = "iptables" ] && echo "xt_hashlimit not available - rate limiting disabled on this kernel" >&2
-    fi
-
     for r in "${rules[@]}"; do
         hex="${r% *}"; port="${r##* }"
         if ! $ipt -t nat -A "$CHAIN" -p udp -m string --algo bm $ICASE --hex-string "$hex" -j REDIRECT --to-ports "$port" 2>/dev/null; then
@@ -1205,6 +1216,9 @@ remove_iptables_rules_only() {
             while $ipt -t nat -D PREROUTING -i "$iface" -p udp --dport 53 -j SLIPSTREAM_DNS 2>/dev/null; do :; done
             $ipt -t nat -F SLIPSTREAM_DNS 2>/dev/null || true
             $ipt -t nat -X SLIPSTREAM_DNS 2>/dev/null || true
+            while $ipt -t raw -D PREROUTING -i "$iface" -p udp --dport 53 -j SLIPSTREAM_DNS_RATE 2>/dev/null; do :; done
+            $ipt -t raw -F SLIPSTREAM_DNS_RATE 2>/dev/null || true
+            $ipt -t raw -X SLIPSTREAM_DNS_RATE 2>/dev/null || true
             local p
             for p in "$SSH_PORT_SLIP" "$XRAY_PORT_SLIP" "$OVPN_PORT_SLIP"; do
                 while $ipt -D INPUT -p udp --dport "$p" -j ACCEPT 2>/dev/null; do :; done
