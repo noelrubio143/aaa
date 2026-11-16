@@ -59,10 +59,10 @@ COMP="ssh"
 
 # Per-source-IP cap on incoming UDP/53 DNS queries, applied before the
 # domain-match redirect so a flooding client can't hit the string match
-# on every packet. ~100 queries per 2 seconds per IP, with a small burst
-# allowance for normal bursty resolver behavior.
-RATE_LIMIT_QPS="50"      # sustained queries/sec per source IP (50/sec = 100 per 2s)
-RATE_LIMIT_BURST="100"   # short burst allowance per source IP
+# on every packet. Generous headroom for normal/heavy legitimate use;
+# this is meant to stop a single abusive client, not throttle real users.
+RATE_LIMIT_QPS="150"     # sustained queries/sec per source IP
+RATE_LIMIT_BURST="300"   # short burst allowance per source IP
 
 comp_service() { case "$1" in xray) echo "$XRAY_SERVICE" ;; ovpn) echo "$OVPN_SERVICE" ;; *) echo "$SSH_SERVICE" ;; esac; }
 comp_conf()    { case "$1" in xray) echo "$XRAY_CONFIG_FILE" ;; ovpn) echo "$OVPN_CONFIG_FILE" ;; *) echo "$SSH_CONFIG_FILE" ;; esac; }
