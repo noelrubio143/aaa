@@ -57,6 +57,13 @@ XRAY_JSON="/etc/xray/config.json"
 NAT_APPLY_SCRIPT="/usr/local/bin/slipstream-nat-apply"
 COMP="ssh"
 
+# Per-source-IP cap on incoming UDP/53 DNS queries, applied before the
+# domain-match redirect so a flooding client can't hit the string match
+# on every packet. ~100 queries per 2 seconds per IP, with a small burst
+# allowance for normal bursty resolver behavior.
+RATE_LIMIT_QPS="50"      # sustained queries/sec per source IP (50/sec = 100 per 2s)
+RATE_LIMIT_BURST="100"   # short burst allowance per source IP
+
 comp_service() { case "$1" in xray) echo "$XRAY_SERVICE" ;; ovpn) echo "$OVPN_SERVICE" ;; *) echo "$SSH_SERVICE" ;; esac; }
 comp_conf()    { case "$1" in xray) echo "$XRAY_CONFIG_FILE" ;; ovpn) echo "$OVPN_CONFIG_FILE" ;; *) echo "$SSH_CONFIG_FILE" ;; esac; }
 comp_port()    { case "$1" in xray) echo "$XRAY_PORT_SLIP" ;; ovpn) echo "$OVPN_PORT_SLIP" ;; *) echo "$SSH_PORT_SLIP" ;; esac; }
@@ -1016,6 +1023,9 @@ CHAIN="SLIPSTREAM_DNS"
 SSH_PORT_SLIP=5300
 XRAY_PORT_SLIP=5301
 OVPN_PORT_SLIP=5302
+RATE_LIMIT_QPS="__RATE_LIMIT_QPS__"
+RATE_LIMIT_BURST="__RATE_LIMIT_BURST__"
+RATE_LIMIT_NAME="slip_dns_rl"
 
 domain_to_hex() {
     local d="${1,,}" out="" label i h c
@@ -1055,6 +1065,7 @@ IFACE=$(ip route | awk '/default/ {print $5; exit}')
 [ -n "$IFACE" ] || IFACE="eth0"
 
 modprobe xt_string 2>/dev/null || true
+modprobe xt_hashlimit 2>/dev/null || true
 ICASE=""
 if iptables -m string --help 2>&1 | grep -q -- '--icase'; then ICASE="--icase"; fi
 
@@ -1079,6 +1090,19 @@ for ipt in iptables ip6tables; do
         [ "$ipt" = "iptables" ] && { echo "cannot create nat chain $CHAIN" >&2; rc=1; }
         continue
     fi
+    # Per-source-IP rate limit: anything over RATE_LIMIT_QPS/sec (with a
+    # RATE_LIMIT_BURST allowance) is dropped here, before it ever reaches
+    # the per-byte string match below. This is what keeps a single abusive
+    # or misbehaving client from being able to flood the domain-match
+    # rules or the slipstream-server process behind them.
+    if ! $ipt -t nat -A "$CHAIN" -p udp \
+        -m hashlimit --hashlimit-above "${RATE_LIMIT_QPS}/sec" \
+        --hashlimit-burst "$RATE_LIMIT_BURST" --hashlimit-mode srcip \
+        --hashlimit-name "$RATE_LIMIT_NAME" --hashlimit-htable-expire 10000 \
+        -j DROP 2>/dev/null; then
+        [ "$ipt" = "iptables" ] && echo "xt_hashlimit not available - rate limiting disabled on this kernel" >&2
+    fi
+
     for r in "${rules[@]}"; do
         hex="${r% *}"; port="${r##* }"
         if ! $ipt -t nat -A "$CHAIN" -p udp -m string --algo bm $ICASE --hex-string "$hex" -j REDIRECT --to-ports "$port" 2>/dev/null; then
@@ -1092,7 +1116,54 @@ for ipt in iptables ip6tables; do
 done
 exit $rc
 NAT_APPLY_EOF
+
+    # Heredoc above is quoted (no variable expansion), so fill in the
+    # configured rate-limit values after writing the file.
+    sed -i "s/__RATE_LIMIT_QPS__/${RATE_LIMIT_QPS}/; s/__RATE_LIMIT_BURST__/${RATE_LIMIT_BURST}/" "$NAT_APPLY_SCRIPT"
+
     chmod +x "$NAT_APPLY_SCRIPT"
+}
+
+# Make sure the xt_hashlimit kernel module (used for the per-IP DNS query
+# rate limit) is available. On some minimal/stripped cloud kernels it ships
+# in a separate "extra modules" package instead of the base kernel image.
+ensure_hashlimit_support() {
+    print_status "Checking for xt_hashlimit kernel module (DNS rate limit)..."
+
+    if modprobe xt_hashlimit 2>/dev/null; then
+        print_status "xt_hashlimit is available"
+        return 0
+    fi
+
+    print_warning "xt_hashlimit not available yet, attempting to install it..."
+
+    case "$PKG_MANAGER" in
+        apt)
+            apt-get update -y &>/dev/null || true
+            apt-get install -y "linux-modules-extra-$(uname -r)" 2>/dev/null \
+                || apt-get install -y "linux-image-extra-$(uname -r)" 2>/dev/null \
+                || true
+            ;;
+        dnf|yum)
+            $PKG_MANAGER install -y kernel-modules-extra kernel-modules 2>/dev/null || true
+            ;;
+        *)
+            print_warning "Unknown package manager, cannot auto-install the module."
+            ;;
+    esac
+
+    # Some kernels need a depmod refresh before the newly-installed .ko is visible
+    depmod -a 2>/dev/null || true
+
+    if modprobe xt_hashlimit 2>/dev/null; then
+        print_status "xt_hashlimit installed and loaded successfully"
+        return 0
+    fi
+
+    print_warning "xt_hashlimit still not available on this kernel (common on some"
+    print_warning "OpenVZ/LXC/stripped-kernel VPS). DNS query rate limiting will be"
+    print_warning "skipped - the tunnel itself will still work normally."
+    return 1
 }
 
 configure_iptables() {
@@ -1102,6 +1173,8 @@ configure_iptables() {
         print_error "iptables command not found. Cannot configure firewall rules."
         exit 1
     fi
+
+    ensure_hashlimit_support
 
     write_nat_apply_script
 
