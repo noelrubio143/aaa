@@ -1036,7 +1036,7 @@ XRAY_PORT_VAY=5311
 OVPN_PORT_VAY=5312
 RATE_LIMIT_QPS="__RATE_LIMIT_QPS__"
 RATE_LIMIT_BURST="__RATE_LIMIT_BURST__"
-RATE_LIMIT_NAME="slip_dns_rl"
+RATE_LIMIT_NAME="vay_dns_rl"
 
 domain_to_hex() {
     local d="${1,,}" out="" label i h c
