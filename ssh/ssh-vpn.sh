@@ -190,6 +190,12 @@ chmod +x /usr/local/bin/slipstream-rust-deploy
 wget -O /usr/local/bin/vaydns-deploy "https://raw.githubusercontent.com/noelrubio143/aaa/main/vaydns/vaydns-deploy.sh"
 chmod +x /usr/local/bin/vaydns-deploy
 
+# menu dnstt (DNS Tunnel) - builds dnstt-server from source on first use,
+# instances: SSH / Xray / OpenVPN (Menu > d). Shares UDP/53 with the others by domain.
+mkdir -p /usr/local/bin
+wget -O /usr/local/bin/dnstt-deploy "https://raw.githubusercontent.com/noelrubio143/aaa/main/dnstt/dnstt-deploy.sh"
+chmod +x /usr/local/bin/dnstt-deploy
+
 # Slipstream (SSH + Xray) is managed from slipstream-rust-deploy (Menu > 5).
 # VayDNS (SSH + Xray) is managed from vaydns-deploy (Menu > 6).
 # UDP/53 is split between all installed instances by domain via iptables (no separate DNS router).
