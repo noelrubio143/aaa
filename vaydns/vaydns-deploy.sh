@@ -7,7 +7,7 @@ set -e
 
 # Menu (menu.sh) calls this script directly with no "Press Enter" pause
 # and immediately clear()s the screen for the next redraw - so on any
-# early exit() (root check, dnstt conflict, etc.) or even after a
+# early exit() (root check, port conflict, etc.) or even after a
 # successful run, the message flashes and disappears before it can be
 # read. Pause on exit, success or failure, so it's actually visible.
 trap 'echo ""; read -rp "Pindutin ang Enter para bumalik sa menu... " _' EXIT
@@ -1153,12 +1153,12 @@ NAT_APPLY_EOF
     chmod +x "$NAT_APPLY_SCRIPT"
 }
 
-# Shared UDP/network tuning for all DNS tunnels (slipstream / vaydns / dnstt).
+# Shared UDP/network tuning for all DNS tunnels (slipstream / vaydns).
 # Safe to run repeatedly: one file, rewritten each time.
 apply_dns_tunnel_sysctl() {
     local f="/etc/sysctl.d/99-dns-tunnel.conf"
     {
-        echo "# DNS tunnel tuning (slipstream / vaydns / dnstt)"
+        echo "# DNS tunnel tuning (slipstream / vaydns)"
         echo "net.core.rmem_max = 8388608"
         echo "net.core.wmem_max = 8388608"
         echo "net.core.rmem_default = 1048576"
@@ -1600,24 +1600,6 @@ display_final_info() {
     print_success_box
 }
 
-# vaydns uses its own ports (5310/5311/5312) and shares the same domain-match
-# UDP/53 redirect chain pattern as Slipstream, so -- unlike the old
-# dnstt-vs-Slipstream port clash -- it does NOT need dnstt uninstalled first.
-# Just warn if dnstt appears to be grabbing the whole of port 53 for itself
-# (a plain, non-domain-matched REDIRECT), since that would shadow vaydns'
-# domain-match rule for anything dnstt's rule also catches.
-detect_dnstt() {
-    if [ ! -f "/usr/local/bin/dnstt-server" ] && ! id "dnstt" &>/dev/null; then
-        return 0
-    fi
-    echo ""
-    print_warning "dnstt also appears to be installed on this VPS."
-    print_warning "If dnstt holds a blanket (non domain-matched) redirect on UDP/53,"
-    print_warning "it can shadow vaydns' domain-match rule. If vaydns traffic doesn't"
-    print_warning "reach vaydns-server after setup, check dnstt's iptables rule order."
-    echo ""
-}
-
 # Main function
 main() {
     RESTART_AFTER_INSTALL=()
@@ -1644,9 +1626,6 @@ main() {
 
     # Clean up DNS conflicts before installation
     cleanup_dns_conflicts
-
-    # Check for dnstt installation and notify user if found
-    detect_dnstt
 
     # Get user input
     get_user_input
