@@ -542,19 +542,25 @@ while true; do
     echo -e "${BLUE}============================================${NC}"
     status_all
     echo ""
-    echo "1) Install/Reconfigure dnstt (ALL-in-one: SSH + OpenVPN + Xray ws, UDP ${ALL_PORT_DNSTT})"
-    echo "2) Show info / public key"
-    echo "3) Restart all dnstt services"
-    echo "4) Uninstall dnstt"
+    echo "1) Install/Reconfigure dnstt - SSH (UDP ${SSH_PORT_DNSTT})"
+    echo "2) Install/Reconfigure dnstt - Xray vless/tcp (UDP ${XRAY_PORT_DNSTT})"
+    echo "3) Install/Reconfigure dnstt - OpenVPN tcp (UDP ${OVPN_PORT_DNSTT})"
+    echo "4) Install/Reconfigure dnstt - ALL-in-one: SSH + OpenVPN + Xray ws (UDP ${ALL_PORT_DNSTT})"
+    echo "5) Show info / public key"
+    echo "6) Restart all dnstt services"
+    echo "7) Uninstall dnstt"
     echo "0) Exit"
     echo ""
     print_question "Choose: "
     read -r choice
     case "$choice" in
-        1) install_instance all ;;
-        2) show_info ;;
-        3) for c in "${ALL_COMPS[@]}"; do is_installed "$c" && systemctl restart "$(comp_service "$c")"; done; apply_nat; print_status "Restarted." ;;
-        4) for c in "${ALL_COMPS[@]}"; do is_installed "$c" && uninstall_instance "$c"; done ;;
+        1) install_instance ssh ;;
+        2) install_instance xray ;;
+        3) install_instance ovpn ;;
+        4) install_instance all ;;
+        5) show_info ;;
+        6) for c in "${ALL_COMPS[@]}"; do is_installed "$c" && systemctl restart "$(comp_service "$c")"; done; apply_nat; print_status "Restarted." ;;
+        7) for c in "${ALL_COMPS[@]}"; do is_installed "$c" && uninstall_instance "$c"; done ;;
         0) exit 0 ;;
         *) print_error "Invalid option" ;;
     esac
