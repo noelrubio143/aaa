@@ -375,6 +375,30 @@ apply_dns_tunnel_sysctl() {
     sysctl -p "$f" &>/dev/null || sysctl --system &>/dev/null || true
 }
 
+# ---------------------------------------------------------------- ipv6
+# True when the VPS has a real (non-loopback, non-link-local) IPv6 address.
+has_ipv6_addresses() {
+    [ -f /proc/net/if_inet6 ] || return 1
+    local a
+    if command -v timeout &>/dev/null; then
+        a=$(timeout 2 ip -6 addr show scope global 2>/dev/null | grep -E "inet6 [0-9a-fA-F:]+" || true)
+    else
+        a=$(ip -6 addr show scope global 2>/dev/null | grep -E "inet6 [0-9a-fA-F:]+" || true)
+    fi
+    [ -n "$a" ]
+}
+
+# Listen address for dnstt-server's -udp flag: dual-stack [::] when IPv6 exists,
+# plain 0.0.0.0 otherwise (same logic as slipstream / vaydns deploy scripts).
+dns_listen_addr() {
+    local port="$1"
+    if command -v ip6tables &>/dev/null && has_ipv6_addresses; then
+        echo "[::]:${port}"
+    else
+        echo "0.0.0.0:${port}"
+    fi
+}
+
 # ---------------------------------------------------------------- instances
 create_service() {
     local comp="$1" domain="$2" port target svc
@@ -385,6 +409,14 @@ DOMAIN="${domain}"
 PORT="${port}"
 TARGET="127.0.0.1:${target}"
 EOF
+
+    local listen_addr
+    listen_addr=$(dns_listen_addr "$port")
+    if [[ "$listen_addr" == "[::]"* ]]; then
+        print_status "IPv6 detected: dnstt (${comp}) listening dual-stack on ${listen_addr}"
+    else
+        print_status "No IPv6 address on this VPS: dnstt (${comp}) listening IPv4 only on ${listen_addr}"
+    fi
 
     local after="network.target"
     [ "$comp" = "xray" ] && after="network.target xray.service"
@@ -400,7 +432,7 @@ Wants=network.target
 [Service]
 Type=simple
 User=${DNSTT_USER}
-ExecStart=${BIN} -udp :${port} -privkey-file ${PRIV_KEY} ${domain} 127.0.0.1:${target}
+ExecStart=${BIN} -udp ${listen_addr} -privkey-file ${PRIV_KEY} ${domain} 127.0.0.1:${target}
 Restart=always
 RestartSec=3
 LimitNOFILE=65535
@@ -476,6 +508,13 @@ show_info() {
     echo "  dnstt-client -doh https://1.1.1.1/dns-query -pubkey-file server.pub <domain> 127.0.0.1:7000"
     echo "Client example (UDP, mas mabilis kung pwede):"
     echo "  dnstt-client -udp 8.8.8.8:53 -pubkey-file server.pub <domain> 127.0.0.1:7000"
+    echo "Client example (UDP, IPv6 resolver - kailangan ng [ ] at port):"
+    echo "  dnstt-client -udp [2001:4860:4860::8888]:53 -pubkey-file server.pub <domain> 127.0.0.1:7000"
+    if has_ipv6_addresses; then
+        echo ""
+        echo "AAAA record for IPv6 (optional, para sa IPv6-only na clients):"
+        echo "  ns.example.com   AAAA <IPv6 ng VPS>"
+    fi
 }
 
 install_instance() {
