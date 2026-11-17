@@ -185,10 +185,13 @@ show_menu() {
     print_status "vaydns Server Management"
     print_status "=================================="
 
-    echo "1) Install/Reconfigure vaydns (ALL-in-one: SSH + OpenVPN + Xray ws, UDP 5313)"
+    echo "1) Install/Reconfigure vaydns - SSH (UDP 5310)"
+    echo "2) Install/Reconfigure vaydns - Xray vless/tcp (UDP 5311)"
+    echo "3) Install/Reconfigure vaydns - OpenVPN tcp (UDP 5312)"
+    echo "4) Install/Reconfigure vaydns - ALL-in-one: SSH + OpenVPN + Xray ws (UDP 5313)"
     echo "0) Exit"
     echo ""
-    print_question "Please select an option (0-1): "
+    print_question "Please select an option (0-4): "
 }
 
 # Function to handle menu selection
@@ -197,27 +200,30 @@ handle_menu() {
         show_menu
         read -r choice
 
+        local pick_comp=""
         case $choice in
-            1)
-                local pick_comp="all"
-                set_component "$pick_comp"
-                print_status "Starting $(comp_label "$pick_comp") vaydns installation/reconfiguration..."
-                return 0
-                ;;
+            1) pick_comp="ssh" ;;
+            2) pick_comp="xray" ;;
+            3) pick_comp="ovpn" ;;
+            4) pick_comp="all" ;;
             0)
                 print_status "Goodbye!"
                 exit 0
                 ;;
             *)
-                print_error "Invalid choice. Please enter 0-1."
+                print_error "Invalid choice. Please enter 0-4."
                 ;;
         esac
 
-        if [ "$choice" != "6" ]; then
-            echo ""
-            print_question "Press Enter to continue..."
-            read -r
+        if [ -n "$pick_comp" ]; then
+            set_component "$pick_comp"
+            print_status "Starting $(comp_label "$pick_comp") vaydns installation/reconfiguration..."
+            return 0
         fi
+
+        echo ""
+        print_question "Press Enter to continue..."
+        read -r
     done
 }
 
