@@ -39,20 +39,25 @@ SLIPSTREAM_PORT="5300"
 #   ssh   -> slipstream-rust-server (UDP 5300) -> local SSH port
 #   xray  -> slipstream-rust-xray   (UDP 5301) -> Xray vless/tcp inbound 127.0.0.1:14018
 #   ovpn  -> slipstream-rust-ovpn   (UDP 5302) -> OpenVPN (tcp) 127.0.0.1:1194
+#   all   -> slipstream-rust-all (UDP 5303) -> gomux edge 127.0.0.1:80 (SSH + OpenVPN + Xray ws paths, one domain)
 # Public UDP/53 is split between them by the domain inside the DNS query
 # (iptables string match), so each instance needs its own domain.
-ALL_COMPS=(ssh xray ovpn)
+ALL_COMPS=(ssh xray ovpn all)
 SSH_PORT_SLIP="5300"
 XRAY_PORT_SLIP="5301"
 OVPN_PORT_SLIP="5302"
+ALL_PORT_SLIP="5303"
+ALL_TARGET_PORT="80"
 OVPN_TARGET_PORT="1194"
 XRAY_TARGET_PORT="14018"
 SSH_SERVICE="slipstream-rust-server"
 XRAY_SERVICE="slipstream-rust-xray"
 OVPN_SERVICE="slipstream-rust-ovpn"
+ALL_SERVICE="slipstream-rust-all"
 SSH_CONFIG_FILE="${CONFIG_DIR}/slipstream-rust-server.conf"
 XRAY_CONFIG_FILE="${CONFIG_DIR}/slipstream-rust-xray.conf"
 OVPN_CONFIG_FILE="${CONFIG_DIR}/slipstream-rust-ovpn.conf"
+ALL_CONFIG_FILE="${CONFIG_DIR}/slipstream-rust-all.conf"
 XRAY_JSON="/etc/xray/config.json"
 NAT_APPLY_SCRIPT="/usr/local/bin/slipstream-nat-apply"
 COMP="ssh"
@@ -64,16 +69,16 @@ COMP="ssh"
 RATE_LIMIT_QPS="150"     # sustained queries/sec per source IP
 RATE_LIMIT_BURST="300"   # short burst allowance per source IP
 
-comp_service() { case "$1" in xray) echo "$XRAY_SERVICE" ;; ovpn) echo "$OVPN_SERVICE" ;; *) echo "$SSH_SERVICE" ;; esac; }
-comp_conf()    { case "$1" in xray) echo "$XRAY_CONFIG_FILE" ;; ovpn) echo "$OVPN_CONFIG_FILE" ;; *) echo "$SSH_CONFIG_FILE" ;; esac; }
-comp_port()    { case "$1" in xray) echo "$XRAY_PORT_SLIP" ;; ovpn) echo "$OVPN_PORT_SLIP" ;; *) echo "$SSH_PORT_SLIP" ;; esac; }
-comp_label()   { case "$1" in xray) echo "Xray vless" ;; ovpn) echo "OpenVPN" ;; *) echo "SSH" ;; esac; }
+comp_service() { case "$1" in xray) echo "$XRAY_SERVICE" ;; ovpn) echo "$OVPN_SERVICE" ;; all) echo "$ALL_SERVICE" ;; *) echo "$SSH_SERVICE" ;; esac; }
+comp_conf()    { case "$1" in xray) echo "$XRAY_CONFIG_FILE" ;; ovpn) echo "$OVPN_CONFIG_FILE" ;; all) echo "$ALL_CONFIG_FILE" ;; *) echo "$SSH_CONFIG_FILE" ;; esac; }
+comp_port()    { case "$1" in xray) echo "$XRAY_PORT_SLIP" ;; ovpn) echo "$OVPN_PORT_SLIP" ;; all) echo "$ALL_PORT_SLIP" ;; *) echo "$SSH_PORT_SLIP" ;; esac; }
+comp_label()   { case "$1" in xray) echo "Xray vless" ;; ovpn) echo "OpenVPN" ;; all) echo "ALL-in-one (gomux)" ;; *) echo "SSH" ;; esac; }
 comp_domain()  { local f; f=$(comp_conf "$1"); if [ -f "$f" ]; then grep '^DOMAIN=' "$f" | cut -d'"' -f2; fi; return 0; }
 
-# Select which instance (ssh | xray | ovpn) the following functions operate on.
+# Select which instance (ssh | xray | ovpn | all) the following functions operate on.
 set_component() {
     COMP="$1"
-    case "$COMP" in xray|ovpn) ;; *) COMP="ssh" ;; esac
+    case "$COMP" in xray|ovpn|all) ;; *) COMP="ssh" ;; esac
     SLIPSTREAM_PORT=$(comp_port "$COMP")
     SERVICE_NAME=$(comp_service "$COMP")
     CONFIG_FILE=$(comp_conf "$COMP")
@@ -180,12 +185,10 @@ show_menu() {
     print_status "slipstream-rust Server Management"
     print_status "=================================="
 
-    echo "1) Install/Reconfigure SSH slipstream        (UDP 5300)"
-    echo "2) Install/Reconfigure Xray vless slipstream  (UDP 5301)"
-    echo "3) Install/Reconfigure OpenVPN slipstream     (UDP 5302)"
+    echo "1) Install/Reconfigure slipstream (ALL-in-one: SSH + OpenVPN + Xray ws, UDP 5303)"
     echo "0) Exit"
     echo ""
-    print_question "Please select an option (0-3): "
+    print_question "Please select an option (0-1): "
 }
 
 # Function to handle menu selection
@@ -195,10 +198,8 @@ handle_menu() {
         read -r choice
 
         case $choice in
-            1|2|3)
-                local pick_comp="ssh"
-                [ "$choice" = "2" ] && pick_comp="xray"
-                [ "$choice" = "3" ] && pick_comp="ovpn"
+            1)
+                local pick_comp="all"
                 set_component "$pick_comp"
                 print_status "Starting $(comp_label "$pick_comp") slipstream installation/reconfiguration..."
                 return 0
@@ -208,7 +209,7 @@ handle_menu() {
                 exit 0
                 ;;
             *)
-                print_error "Invalid choice. Please enter 0-3."
+                print_error "Invalid choice. Please enter 0-1."
                 ;;
         esac
 
@@ -975,7 +976,7 @@ configure_ufw() {
 
     ufw allow 53/udp
     local p
-    for p in "$SSH_PORT_SLIP" "$XRAY_PORT_SLIP" "$OVPN_PORT_SLIP"; do
+    for p in "$SSH_PORT_SLIP" "$XRAY_PORT_SLIP" "$OVPN_PORT_SLIP" "$ALL_PORT_SLIP"; do
         if installed_slip_ports | grep -qx "$p"; then
             ufw allow "$p"/udp
         else
@@ -1024,6 +1025,7 @@ RATE_CHAIN="SLIPSTREAM_DNS_RATE"
 SSH_PORT_SLIP=5300
 XRAY_PORT_SLIP=5301
 OVPN_PORT_SLIP=5302
+ALL_PORT_SLIP=5303
 RATE_LIMIT_QPS="__RATE_LIMIT_QPS__"
 RATE_LIMIT_BURST="__RATE_LIMIT_BURST__"
 RATE_LIMIT_NAME="slip_dns_rl"
@@ -1052,7 +1054,7 @@ while read -r hex port; do
     rules+=("$hex $port")
     ports+=("$port")
 done < <(
-    for pair in "server:$SSH_PORT_SLIP" "xray:$XRAY_PORT_SLIP" "ovpn:$OVPN_PORT_SLIP"; do
+    for pair in "server:$SSH_PORT_SLIP" "xray:$XRAY_PORT_SLIP" "ovpn:$OVPN_PORT_SLIP" "all:$ALL_PORT_SLIP"; do
         name="${pair%%:*}"; port="${pair##*:}"
         conf="$CONF_DIR/slipstream-rust-${name}.conf"
         [ -f "$conf" ] || continue
@@ -1083,7 +1085,7 @@ for ipt in iptables ip6tables; do
     $ipt -t raw -F "$RATE_CHAIN" 2>/dev/null
     $ipt -t raw -X "$RATE_CHAIN" 2>/dev/null
     while $ipt -t nat -D PREROUTING -i "$IFACE" -p udp --dport 53 -j REDIRECT --to-ports "$SSH_PORT_SLIP" 2>/dev/null; do :; done
-    for p in "$SSH_PORT_SLIP" "$XRAY_PORT_SLIP" "$OVPN_PORT_SLIP"; do
+    for p in "$SSH_PORT_SLIP" "$XRAY_PORT_SLIP" "$OVPN_PORT_SLIP" "$ALL_PORT_SLIP"; do
         while $ipt -D INPUT -p udp --dport "$p" -j ACCEPT 2>/dev/null; do :; done
     done
 
@@ -1133,6 +1135,24 @@ NAT_APPLY_EOF
     sed -i "s/__RATE_LIMIT_QPS__/${RATE_LIMIT_QPS}/; s/__RATE_LIMIT_BURST__/${RATE_LIMIT_BURST}/" "$NAT_APPLY_SCRIPT"
 
     chmod +x "$NAT_APPLY_SCRIPT"
+}
+
+# Shared UDP/network tuning for all DNS tunnels (slipstream / vaydns / dnstt).
+# Safe to run repeatedly: one file, rewritten each time.
+apply_dns_tunnel_sysctl() {
+    local f="/etc/sysctl.d/99-dns-tunnel.conf"
+    {
+        echo "# DNS tunnel tuning (slipstream / vaydns / dnstt)"
+        echo "net.core.rmem_max = 8388608"
+        echo "net.core.wmem_max = 8388608"
+        echo "net.core.rmem_default = 1048576"
+        echo "net.core.wmem_default = 1048576"
+        echo "net.core.netdev_max_backlog = 5000"
+        if [ -e /proc/sys/net/netfilter/nf_conntrack_max ]; then
+            echo "net.netfilter.nf_conntrack_max = 262144"
+        fi
+    } > "$f"
+    sysctl -p "$f" &>/dev/null || sysctl --system &>/dev/null || true
 }
 
 # Make sure the xt_hashlimit kernel module (used for the per-IP DNS query
@@ -1186,6 +1206,7 @@ configure_iptables() {
     fi
 
     ensure_hashlimit_support
+    apply_dns_tunnel_sysctl
 
     write_nat_apply_script
 
@@ -1220,7 +1241,7 @@ remove_iptables_rules_only() {
             $ipt -t raw -F SLIPSTREAM_DNS_RATE 2>/dev/null || true
             $ipt -t raw -X SLIPSTREAM_DNS_RATE 2>/dev/null || true
             local p
-            for p in "$SSH_PORT_SLIP" "$XRAY_PORT_SLIP" "$OVPN_PORT_SLIP"; do
+            for p in "$SSH_PORT_SLIP" "$XRAY_PORT_SLIP" "$OVPN_PORT_SLIP" "$ALL_PORT_SLIP"; do
                 while $ipt -D INPUT -p udp --dport "$p" -j ACCEPT 2>/dev/null; do :; done
             done
         done
@@ -1270,7 +1291,7 @@ configure_firewall() {
     if command -v firewall-cmd &> /dev/null && systemctl is-active --quiet firewalld; then
         print_status "Configuring active firewalld..."
         local p
-        for p in "$SSH_PORT_SLIP" "$XRAY_PORT_SLIP" "$OVPN_PORT_SLIP"; do
+        for p in "$SSH_PORT_SLIP" "$XRAY_PORT_SLIP" "$OVPN_PORT_SLIP" "$ALL_PORT_SLIP"; do
             if installed_slip_ports | grep -qx "$p"; then
                 firewall-cmd --permanent --add-port="$p"/udp
             else
@@ -1341,6 +1362,14 @@ create_systemd_service() {
             target_port="$OVPN_TARGET_PORT"
             unit_after="After=network.target openvpn-server@server.service"
             print_status "Using OpenVPN (tcp) port: $target_port"
+            ;;
+        all)
+            target_port="$ALL_TARGET_PORT"
+            unit_after="After=network.target gomux.service"
+            print_status "Using gomux edge (127.0.0.1:$target_port): SSH + OpenVPN + Xray ws paths on one domain"
+            if ! ss -tln 2>/dev/null | grep -q ":${target_port} "; then
+                print_warning "Nothing is listening on port ${target_port} yet. Install gomux first (setup1.sh / xray/ins-gomux.sh)."
+            fi
             ;;
         *)
             target_port=$(detect_ssh_port)
@@ -1523,6 +1552,14 @@ print_success_box() {
         echo -e "${header_color}OpenVPN client settings:${reset}"
         echo -e "  ${text_color}Use Slipstream (DNS Tunnel) with domain: $DOMAIN${reset}"
         echo -e "  ${text_color}Inside the tunnel: OpenVPN (tcp) profile from: view-ovpn (login = SSH account)${reset}"
+    fi
+
+    if [ "$COMP" = "all" ]; then
+        echo ""
+        echo -e "${header_color}ALL-in-one client settings:${reset}"
+        echo -e "  ${text_color}Use Slipstream (DNS Tunnel) with domain: $DOMAIN${reset}"
+        echo -e "  ${text_color}Inside the tunnel (gomux, port 80): raw SSH, raw OpenVPN (tcp), or Xray over HTTP ws paths${reset}"
+        echo -e "  ${text_color}(/vless /vmess /trojan-ws /xhttp-*) -- raw vless/tcp is NOT available in this mode${reset}"
     fi
 
     # Bottom border
