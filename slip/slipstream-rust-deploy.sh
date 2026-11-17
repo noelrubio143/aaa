@@ -1573,76 +1573,25 @@ display_final_info() {
     print_success_box
 }
 
-# Function to detect dnstt installation
+# Slipstream uses its own ports (5300-5303) and its own domain-matched UDP/53
+# redirect chain (SLIPSTREAM_DNS), the same pattern as vaydns (5310-5313) and
+# dnstt (5320-5323). They live side by side, so dnstt does NOT have to be
+# uninstalled first. Just warn if the old stand-alone dnstt (AliRezaBeigy's
+# dnstt-deploy, service "dnstt-server") is present, because that one holds
+# port 5300 and a blanket redirect on UDP/53.
 detect_dnstt() {
-    local dnstt_detected=false
-    local detection_reasons=()
-
-    # Check for dnstt-server binary
-    if [ -f "/usr/local/bin/dnstt-server" ]; then
-        dnstt_detected=true
-        detection_reasons+=("dnstt-server binary found at /usr/local/bin/dnstt-server")
-    fi
-
-    # Check for dnstt-server systemd service
-    if systemctl list-unit-files | grep -q "^dnstt-server.service"; then
-        dnstt_detected=true
-        detection_reasons+=("dnstt-server systemd service found")
-    fi
-
-    # Check for dnstt user
-    if id "dnstt" &>/dev/null; then
-        dnstt_detected=true
-        detection_reasons+=("dnstt user found")
-    fi
-
-    # Check for dnstt config directory
-    if [ -d "/etc/dnstt" ]; then
-        dnstt_detected=true
-        detection_reasons+=("dnstt config directory found at /etc/dnstt")
-    fi
-
-    # Check for dnstt-deploy script
-    if [ -f "/usr/local/bin/dnstt-deploy" ]; then
-        dnstt_detected=true
-        detection_reasons+=("dnstt-deploy script found")
-    fi
-
-    if [ "$dnstt_detected" = true ]; then
+    if systemctl list-unit-files 2>/dev/null | grep -q "^dnstt-server.service" && \
+       systemctl is-active --quiet dnstt-server 2>/dev/null; then
         echo ""
-        print_error "dnstt installation detected on this system!"
+        print_warning "The OLD stand-alone dnstt-server service is running (port 5300)."
+        print_warning "It conflicts with slipstream on port 5300. Remove it and use the"
+        print_warning "new dnstt menu (dnstt-deploy, ports 5320-5323) instead:"
+        echo -e "${GREEN}  systemctl disable --now dnstt-server${NC}"
         echo ""
-        print_warning "The following dnstt components were found:"
-        for reason in "${detection_reasons[@]}"; do
-            echo -e "  ${YELLOW}- $reason${NC}"
-        done
-        echo ""
-        print_warning "dnstt must be uninstalled before installing slipstream-rust."
-        print_warning "Both services use port 5300 and will conflict."
-        echo ""
-        print_status "To uninstall dnstt, run the following command:"
-        echo -e "${GREEN}  bash <(curl -Ls https://raw.githubusercontent.com/AliRezaBeigy/dnstt-deploy/main/dnstt-deploy.sh) uninstall${NC}"
-        echo ""
-        print_question "Press Enter after uninstalling dnstt to continue, or Ctrl+C to exit: "
+        print_question "Press Enter to continue anyway, or Ctrl+C to exit: "
         read -r
-        echo ""
-        
-        # Verify dnstt is actually uninstalled
-        local still_installed=false
-        if [ -f "/usr/local/bin/dnstt-server" ] || \
-           systemctl list-unit-files | grep -q "^dnstt-server.service" || \
-           id "dnstt" &>/dev/null || \
-           [ -d "/etc/dnstt" ]; then
-            still_installed=true
-        fi
-        
-        if [ "$still_installed" = true ]; then
-            print_error "dnstt is still detected on the system. Please uninstall it completely before proceeding."
-            exit 1
-        else
-            print_status "dnstt has been successfully removed. Continuing with slipstream-rust installation..."
-        fi
     fi
+    return 0
 }
 
 # Main function
