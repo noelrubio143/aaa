@@ -7,7 +7,7 @@ set -e
 
 # Menu (menu.sh) calls this script directly with no "Press Enter" pause
 # and immediately clear()s the screen for the next redraw - so on any
-# early exit() (root check, dnstt conflict, etc.) or even after a
+# early exit() (root check, port conflict, etc.) or even after a
 # successful run, the message flashes and disappears before it can be
 # read. Pause on exit, success or failure, so it's actually visible.
 trap 'echo ""; read -rp "Pindutin ang Enter para bumalik sa menu... " _' EXIT
@@ -1143,12 +1143,12 @@ NAT_APPLY_EOF
     chmod +x "$NAT_APPLY_SCRIPT"
 }
 
-# Shared UDP/network tuning for all DNS tunnels (slipstream / vaydns / dnstt).
+# Shared UDP/network tuning for all DNS tunnels (slipstream / vaydns).
 # Safe to run repeatedly: one file, rewritten each time.
 apply_dns_tunnel_sysctl() {
     local f="/etc/sysctl.d/99-dns-tunnel.conf"
     {
-        echo "# DNS tunnel tuning (slipstream / vaydns / dnstt)"
+        echo "# DNS tunnel tuning (slipstream / vaydns)"
         echo "net.core.rmem_max = 8388608"
         echo "net.core.wmem_max = 8388608"
         echo "net.core.rmem_default = 1048576"
@@ -1579,27 +1579,6 @@ display_final_info() {
     print_success_box
 }
 
-# Slipstream uses its own ports (5300-5303) and its own domain-matched UDP/53
-# redirect chain (SLIPSTREAM_DNS), the same pattern as vaydns (5310-5313) and
-# dnstt (5320-5323). They live side by side, so dnstt does NOT have to be
-# uninstalled first. Just warn if the old stand-alone dnstt (AliRezaBeigy's
-# dnstt-deploy, service "dnstt-server") is present, because that one holds
-# port 5300 and a blanket redirect on UDP/53.
-detect_dnstt() {
-    if systemctl list-unit-files 2>/dev/null | grep -q "^dnstt-server.service" && \
-       systemctl is-active --quiet dnstt-server 2>/dev/null; then
-        echo ""
-        print_warning "The OLD stand-alone dnstt-server service is running (port 5300)."
-        print_warning "It conflicts with slipstream on port 5300. Remove it and use the"
-        print_warning "new dnstt menu (dnstt-deploy, ports 5320-5323) instead:"
-        echo -e "${GREEN}  systemctl disable --now dnstt-server${NC}"
-        echo ""
-        print_question "Press Enter to continue anyway, or Ctrl+C to exit: "
-        read -r
-    fi
-    return 0
-}
-
 # Main function
 main() {
     RESTART_AFTER_INSTALL=()
@@ -1626,9 +1605,6 @@ main() {
 
     # Clean up DNS conflicts before installation
     cleanup_dns_conflicts
-
-    # Check for dnstt installation and notify user if found
-    detect_dnstt
 
     # Get user input
     get_user_input
