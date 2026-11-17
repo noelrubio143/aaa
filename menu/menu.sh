@@ -75,7 +75,6 @@ show_menu() {
     echo -e "\e[1;36m 7 \e[0m: Menu Setting"
     echo -e "\e[1;36m 8 \e[0m: Status Service"
     echo -e "\e[1;36m 9 \e[0m: Reboot VPS"
-    echo -e "\e[1;36m d \e[0m: Menu dnstt (DNS Tunnel)"
     echo -e "\e[1;36m x \e[0m: Exit Script"
     echo -e ""
     echo -e "\e[1;33m -------------------------------------------------\e[0m"
@@ -97,7 +96,6 @@ show_menu() {
     7) clear ; m-system ;;
     8) clear ; running ;;
     9) clear ; /sbin/reboot ;;
-    d) clear ; dnstt-deploy ;;
     x) exit ;;
     *) echo "Invalid selection" ; sleep 1 ;;
     esac
