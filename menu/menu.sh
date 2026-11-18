@@ -74,9 +74,10 @@ show_menu() {
     echo -e "\e[1;36m 6 \e[0m: Menu VayDNS (DNS Tunnel)"
     echo -e "\e[1;36m 7 \e[0m: Menu Soar (DNS Tunnel)"
     echo -e "\e[1;36m 8 \e[0m: Menu Pingtunnel (ICMP Tunnel)"
-    echo -e "\e[1;36m 9 \e[0m: Menu Setting"
-    echo -e "\e[1;36m 10 \e[0m: Status Service"
-    echo -e "\e[1;36m 11 \e[0m: Reboot VPS"
+    echo -e "\e[1;36m 9 \e[0m: Menu L2TP/IPsec"
+    echo -e "\e[1;36m 10 \e[0m: Menu Setting"
+    echo -e "\e[1;36m 11 \e[0m: Status Service"
+    echo -e "\e[1;36m 12 \e[0m: Reboot VPS"
     echo -e "\e[1;36m x \e[0m: Exit Script"
     echo -e ""
     echo -e "\e[1;33m -------------------------------------------------\e[0m"
@@ -97,9 +98,10 @@ show_menu() {
     6) clear ; vaydns-deploy ;;
     7) clear ; soar-deploy ;;
     8) clear ; pingtunnel-deploy ;;
-    9) clear ; m-system ;;
-    10) clear ; running ;;
-    11) clear ; /sbin/reboot ;;
+    9) clear ; l2tp-deploy ;;
+    10) clear ; m-system ;;
+    11) clear ; running ;;
+    12) clear ; /sbin/reboot ;;
     x) exit ;;
     *) echo "Invalid selection" ; sleep 1 ;;
     esac
