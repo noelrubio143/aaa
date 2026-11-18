@@ -209,6 +209,25 @@ if [[ "$proto:$type" == "vless:ws" && -f "$VAY_XRAY_CONF" ]] && grep -q '^#slipv
     echo -e "              use this domain as the Nameserver/Domain + the pubkey above."
     echo -e "$L"
 fi
+# Soar Xray (DNS tunnel) - shown only when it has been deployed
+SOAR_XRAY_CONF="/etc/soar/soar-xray.conf"
+SOAR_LINK_PORT=53   # port shown in the soar vless/tcp link (change if your client app needs another)
+if [[ "$proto:$type" == "vless:ws" && -f "$SOAR_XRAY_CONF" ]] && grep -q '^#slipvless$' /etc/xray/config.json && \
+   awk -v u="$user" '/^#slipvless$/ {on=1; next} on && /^#& / {if ($2==u) f=1; next} on && !/^ *}/ && !/^#& / && !/"id"/ && !/"email"/ {on=0} END {exit !f}' "$CONFIG"; then
+    soardom=$(grep '^DOMAIN=' "$SOAR_XRAY_CONF" | cut -d'"' -f2)
+    soartgt=$(grep '^TARGET_PORT=' "$SOAR_XRAY_CONF" | cut -d'"' -f2)
+    echo -e "\E[44;1;39m       CONFIG SOAR XRAY (DNS)       \E[0m"
+    echo -e "$L"
+    echo -e "NS Domain   : ${soardom}"
+    echo -e "Pubkey      : $(cat /etc/soar/xray.pub 2>/dev/null)"
+    echo -e "Destination : 127.0.0.1:${soartgt:-14020}  (inside the tunnel)"
+    echo -e "id          : ${uuid}"
+    echo -e "Protocol    : vless (tcp, security none)"
+    echo -e "Link TCP    : vless://${uuid}@${soardom}:${SOAR_LINK_PORT}?type=tcp&security=none&encryption=none#${user}-soar"
+    echo -e "Note        : pick Soar (DNS Tunnel) in the client app and"
+    echo -e "              use this domain as the Nameserver/Domain + the pubkey above."
+    echo -e "$L"
+fi
 echo ""
 read -n 1 -s -r -p "Press any key to back on menu"
 
