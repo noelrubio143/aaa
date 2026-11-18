@@ -81,6 +81,27 @@ else
     echo -e "VayDNS for OVPN not deployed. Run vaydns-deploy > option 3."
     echo -e "\033[0;34m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\033[0m"
 fi
+# Soar (DNS Tunnel) for OpenVPN - shown only when deployed (Menu > 7 > option 3)
+SOAR_CONF="/etc/soar/soar-ovpn.conf"
+if [ -f "$SOAR_CONF" ]; then
+    sdom=$(grep '^DOMAIN=' "$SOAR_CONF" | cut -d'"' -f2)
+    stgt=$(grep '^TARGET_PORT=' "$SOAR_CONF" | cut -d'"' -f2)
+    echo -e "OVPN + SOAR (DNS Tunnel)"
+    echo -e "Domain      : ${sdom}"
+    echo -e "Pubkey      : $(cat /etc/soar/ovpn.pub 2>/dev/null)"
+    echo -e "Destination : 127.0.0.1:${stgt:-1194}  (inside the tunnel)"
+    if systemctl is-active --quiet soar-ovpn; then
+        echo -e "Service     : \033[0;32mRUNNING\033[0m (UDP 5322 -> 127.0.0.1:${stgt:-1194})"
+    else
+        echo -e "Service     : \033[0;31mNOT RUNNING\033[0m  (journalctl -u soar-ovpn -e)"
+    fi
+    echo -e "Note        : pick OVPN + Soar (DNS Tunnel) in the client app,"
+    echo -e "              use this domain + pubkey. Same profile + login as above."
+    echo -e "\033[0;34m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\033[0m"
+else
+    echo -e "Soar for OVPN not deployed. Run soar-deploy > option 3."
+    echo -e "\033[0;34m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\033[0m"
+fi
 echo ""
 read -n 1 -s -r -p "Press any key to back on menu"
 m-sshovpn
