@@ -12,12 +12,15 @@ input,button{width:100%;padding:12px;margin-bottom:10px;border-radius:10px;borde
 button{background:var(--ac);border:0;color:#000;font-weight:600;text-align:left}
 button.alt{background:transparent;border:1px solid #8884;color:inherit;text-align:center;font-weight:500}
 small{color:var(--mut);font-weight:400;float:right}
+.row{display:flex;gap:6px}.row button{margin-bottom:10px}.row button.alt{width:auto;padding:12px 14px}
 </style></head><body><div class="card">
 <h1>Free Trial Panel</h1>
 <p>Pumili ng server para gumawa ng free trial account (SSH, OVPN, Xray). 3 days ang bawat account.</p>
 <div id="list"></div>
 <input id="h" placeholder="Iba pang server: IP o domain" autocomplete="off">
+<input id="n" placeholder="Pangalan (optional, hal. SG 1)" autocomplete="off">
 <button id="go" class="alt">Open Panel</button>
+<button id="sv" class="alt">Save server (sa device na ito)</button>
 <p id="m" style="margin:8px 0 0"></p>
 </div>
 <script>
@@ -32,14 +35,38 @@ function open_(h){
 $("go").onclick = () => open_($("h").value);
 const q = new URLSearchParams(location.search).get("h");
 if (q) open_(q);   // ?h=IP  -> diretso sa panel
-// Listahan ng mga VPS mo: i-edit ang servers.json sa repo (name + host)
-fetch("servers.json", {cache:"no-store"}).then(r => r.json()).then(list => {
-  for (const s of list) {
-    const b = document.createElement("button");
+let shared = [];
+const getLocal = () => { try { return JSON.parse(localStorage.getItem("servers") || "[]"); } catch(e) { return []; } };
+const setLocal = l => { try { localStorage.setItem("servers", JSON.stringify(l)); } catch(e) { $("m").textContent = "Hindi ma-save sa browser na ito"; } };
+function render(){
+  const box = $("list"); box.textContent = "";
+  const seen = new Set();
+  const add = (s, mine) => {
+    if (!s || !s.host || seen.has(s.host)) return; seen.add(s.host);
+    const row = document.createElement("div"); row.className = "row";
+    const b = document.createElement("button"); b.style.flex = "1";
     b.textContent = s.name || s.host;
     const sm = document.createElement("small"); sm.textContent = s.host; b.append(sm);
-    b.onclick = () => open_(s.host);
-    $("list").append(b);
-  }
-}).catch(() => {});
+    b.onclick = () => open_(s.host); row.append(b);
+    if (mine) {
+      const c = document.createElement("button"); c.className = "alt"; c.textContent = "Copy line"; c.title = "Para sa servers.json sa GitHub";
+      c.onclick = () => { navigator.clipboard.writeText(JSON.stringify({name: s.name || s.host, host: s.host})); $("m").textContent = "Na-copy. Idagdag sa servers.json sa GitHub para makita ng lahat."; };
+      const x = document.createElement("button"); x.className = "alt"; x.textContent = "×";
+      x.onclick = () => { setLocal(getLocal().filter(v => v.host !== s.host)); render(); };
+      row.append(c, x);
+    }
+    box.append(row);
+  };
+  shared.forEach(s => add(s, false));
+  getLocal().forEach(s => add(s, true));
+}
+$("sv").onclick = () => {
+  const h = clean($("h").value);
+  if (!/^[a-zA-Z0-9.-]+$/.test(h)) { $("m").textContent = "Invalid IP/domain"; return; }
+  const l = getLocal().filter(v => v.host !== h);
+  l.push({name: $("n").value.trim() || h, host: h}); setLocal(l);
+  $("h").value = ""; $("n").value = ""; $("m").textContent = "Na-save sa device na ito."; render();
+};
+// Shared list (servers.json sa repo) - makikita ng lahat ng bisita
+fetch("servers.json", {cache:"no-store"}).then(r => r.json()).then(l => { shared = l; render(); }).catch(() => render());
 </script></body></html>

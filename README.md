@@ -21,7 +21,7 @@ wget -O panel-install.sh https://raw.githubusercontent.com/noelrubio143/aaa/main
 
 (GitHub Pages ang launcher; ilalagay mo roon ang IP (o domain) ng VPS at bubuksan nito ang tunay na panel sa `http://IP-NG-VPS:8090`. Ipinapakita rin ng installer ang direktang link pagkatapos mag-install. Para isang tap na lang, ilagay ang IP mo sa `DEFAULT_HOST` sa loob ng `index.html`, o gamitin ang `https://noelrubio143.github.io/aaa/?h=IP-NG-VPS`.)
 
-**Maraming VPS?** I-edit ang `servers.json` sa repo at ilista ang bawat server. Lalabas sila bilang listahan sa Pages link; pindutin lang ang gusto mo. Ipinapakita rin ng installer ang eksaktong linya na idadagdag mo.
+**Maraming VPS?** Hindi kayang magsulat ng Pages sa repo, kaya dalawa ang paraan: (1) i-edit ang `servers.json` sa GitHub (pencil icon > Commit) para makita ng LAHAT ng bisita, o (2) gamitin ang "Save server" sa Pages para sa device mo lang (may "Copy line" para sa servers.json). I-edit ang `servers.json` sa repo at ilista ang bawat server. Lalabas sila bilang listahan sa Pages link; pindutin lang ang gusto mo. Ipinapakita rin ng installer ang eksaktong linya na idadagdag mo.
 ```
 [
   {"name": "SG 1", "host": "123.45.67.89"},
