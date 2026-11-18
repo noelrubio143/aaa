@@ -38,6 +38,9 @@ if systemctl is-active --quiet trial-portal; then
   dom=$(cat /etc/xray/domain 2>/dev/null); [ -z "$dom" ] && dom=$(wget -qO- ipv4.icanhazip.com)
   echo "Panel is running."
   echo "Panel link: http://$dom:$PORT"
+  echo ""
+  echo "Para lumabas sa Pages list mo, idagdag ito sa servers.json (GitHub):"
+  echo "  {\"name\": \"$(hostname)\", \"host\": \"$dom\"}"
 else
   echo "Panel failed to start:  journalctl -u trial-portal -e"
 fi

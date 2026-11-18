@@ -9,29 +9,37 @@
 .card{background:var(--card);border-radius:16px;padding:22px;width:100%;max-width:400px}
 h1{font-size:20px;margin:0 0 4px}p{color:var(--mut);font-size:14px;margin:0 0 16px}
 input,button{width:100%;padding:12px;margin-bottom:10px;border-radius:10px;border:1px solid #8884;background:transparent;color:inherit;font-size:16px}
-button{background:var(--ac);border:0;color:#000;font-weight:600}
+button{background:var(--ac);border:0;color:#000;font-weight:600;text-align:left}
+button.alt{background:transparent;border:1px solid #8884;color:inherit;text-align:center;font-weight:500}
+small{color:var(--mut);font-weight:400;float:right}
 </style></head><body><div class="card">
 <h1>Free Trial Panel</h1>
-<p>Gumawa ng free trial account (SSH, OVPN, Xray). 3 days ang bawat account.</p>
-<!-- Optional: ilagay dito ang IP o domain ng VPS mo para isang tap na lang -->
-<input id="h" placeholder="VPS IP o domain (hal. 123.45.67.89)" autocomplete="off">
-<button id="go">Open Panel</button>
-<p id="m" style="margin:0"></p>
+<p>Pumili ng server para gumawa ng free trial account (SSH, OVPN, Xray). 3 days ang bawat account.</p>
+<div id="list"></div>
+<input id="h" placeholder="Iba pang server: IP o domain" autocomplete="off">
+<button id="go" class="alt">Open Panel</button>
+<p id="m" style="margin:8px 0 0"></p>
 </div>
 <script>
-const DEFAULT_HOST = "";   // <- ilagay ang IP (o domain) ng VPS mo dito kung gusto mong naka-set na
 const PORT = 8090;
-const q = new URLSearchParams(location.search).get("h");
-let host = (q || DEFAULT_HOST || "").trim();
-try { if (!host) host = localStorage.getItem("vps") || ""; } catch(e){}
+const $ = id => document.getElementById(id);
 const clean = v => v.trim().replace(/^https?:\/\//,"").replace(/[\/:].*$/,"");
 function open_(h){
   h = clean(h);
-  if(!/^[a-zA-Z0-9.-]+$/.test(h)){ document.getElementById("m").textContent="Invalid IP/domain"; return; }
-  try { localStorage.setItem("vps", h); } catch(e){}
+  if(!/^[a-zA-Z0-9.-]+$/.test(h)){ $("m").textContent="Invalid IP/domain"; return; }
   location.href = "http://" + h + ":" + PORT + "/";
 }
-document.getElementById("h").value = host;
-document.getElementById("go").onclick = () => open_(document.getElementById("h").value);
-if (host && (q || DEFAULT_HOST)) open_(host);   // auto-open kapag naka-set na ang host
+$("go").onclick = () => open_($("h").value);
+const q = new URLSearchParams(location.search).get("h");
+if (q) open_(q);   // ?h=IP  -> diretso sa panel
+// Listahan ng mga VPS mo: i-edit ang servers.json sa repo (name + host)
+fetch("servers.json", {cache:"no-store"}).then(r => r.json()).then(list => {
+  for (const s of list) {
+    const b = document.createElement("button");
+    b.textContent = s.name || s.host;
+    const sm = document.createElement("small"); sm.textContent = s.host; b.append(sm);
+    b.onclick = () => open_(s.host);
+    $("list").append(b);
+  }
+}).catch(() => {});
 </script></body></html>

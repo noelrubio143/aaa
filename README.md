@@ -19,7 +19,17 @@ wget -O panel-install.sh https://raw.githubusercontent.com/noelrubio143/aaa/main
 
 **Panel link:** https://noelrubio143.github.io/aaa/
 
-(GitHub Pages ang launcher; ilalagay mo roon ang domain ng VPS at bubuksan nito ang tunay na panel sa `http://YOUR-DOMAIN:8090`. Ipinapakita rin ng installer ang direktang link pagkatapos mag-install. Para isang tap na lang, ilagay ang domain mo sa `DEFAULT_HOST` sa loob ng `index.html`, o gamitin ang `https://noelrubio143.github.io/aaa/?h=YOUR-DOMAIN`.)
+(GitHub Pages ang launcher; ilalagay mo roon ang IP (o domain) ng VPS at bubuksan nito ang tunay na panel sa `http://IP-NG-VPS:8090`. Ipinapakita rin ng installer ang direktang link pagkatapos mag-install. Para isang tap na lang, ilagay ang IP mo sa `DEFAULT_HOST` sa loob ng `index.html`, o gamitin ang `https://noelrubio143.github.io/aaa/?h=IP-NG-VPS`.)
+
+**Maraming VPS?** I-edit ang `servers.json` sa repo at ilista ang bawat server. Lalabas sila bilang listahan sa Pages link; pindutin lang ang gusto mo. Ipinapakita rin ng installer ang eksaktong linya na idadagdag mo.
+```
+[
+  {"name": "SG 1", "host": "123.45.67.89"},
+  {"name": "US 1", "host": "98.76.54.32"}
+]
+```
+
+Walang domain? Okay lang, IP ang gagamitin (hal. `http://123.45.67.89:8090`); gagana ang panel kahit self-signed ang setup mo dahil hindi ito gumagamit ng SSL.
 
 Iba ang port kung gusto mo: `bash panel-install.sh 8091` (huwag 8080, gamit iyon ng Squid).
 
