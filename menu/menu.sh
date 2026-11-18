@@ -72,9 +72,10 @@ show_menu() {
     echo -e "\e[1;36m 4 \e[0m: Menu Trojan"
     echo -e "\e[1;36m 5 \e[0m: Menu Slipstream (DNS Tunnel)"
     echo -e "\e[1;36m 6 \e[0m: Menu VayDNS (DNS Tunnel)"
-    echo -e "\e[1;36m 7 \e[0m: Menu Setting"
-    echo -e "\e[1;36m 8 \e[0m: Status Service"
-    echo -e "\e[1;36m 9 \e[0m: Reboot VPS"
+    echo -e "\e[1;36m 7 \e[0m: Menu Soar (DNS Tunnel)"
+    echo -e "\e[1;36m 8 \e[0m: Menu Setting"
+    echo -e "\e[1;36m 9 \e[0m: Status Service"
+    echo -e "\e[1;36m 10 \e[0m: Reboot VPS"
     echo -e "\e[1;36m x \e[0m: Exit Script"
     echo -e ""
     echo -e "\e[1;33m -------------------------------------------------\e[0m"
@@ -93,9 +94,10 @@ show_menu() {
     4) clear ; m-trojan ;;
     5) clear ; slipstream-rust-deploy ;;
     6) clear ; vaydns-deploy ;;
-    7) clear ; m-system ;;
-    8) clear ; running ;;
-    9) clear ; /sbin/reboot ;;
+    7) clear ; soar-deploy ;;
+    8) clear ; m-system ;;
+    9) clear ; running ;;
+    10) clear ; /sbin/reboot ;;
     x) exit ;;
     *) echo "Invalid selection" ; sleep 1 ;;
     esac
