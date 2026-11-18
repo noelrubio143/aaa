@@ -84,7 +84,7 @@ do_install() {
     local sh; sh=$(pick_script)
     print_status "Running ${sh} (takes a few minutes)..."
     VPN_IPSEC_PSK="$PSK" VPN_USER="$VUSER" VPN_PASSWORD="$VPASS" VPN_SKIP_IKEV2=yes \
-        sh "${WORK}/${sh}"
+        bash "${WORK}/${sh}"
     if [ $? -ne 0 ]; then print_error "Install failed."; return 1; fi
 
     mkdir -p "$CONF_DIR"
