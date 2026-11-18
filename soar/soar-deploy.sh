@@ -16,7 +16,7 @@
 # install / in "Show info").
 #
 # The prebuilt soar-server binaries (linux amd64 + arm64) come from the
-# "assets" release of noelrubio143/aaa.
+# "assets" release of noelrubio143/soars.
 
 # Menu (menu.sh) calls this script directly with no "Press Enter" pause
 # and immediately clear()s the screen for the next redraw - so on any
@@ -49,10 +49,10 @@ EGRESS_APPLY_SCRIPT="/usr/local/bin/soar-egress-apply"
 RESTORE_SERVICE="soar-restore-iptables"
 XRAY_JSON="/etc/xray/config.json"
 
-# Where the prebuilt soar-server lives: the aaa repo's own "assets" release
+# Where the prebuilt soar-server lives: the soars repo "assets" release
 # (soar-server-linux-amd64 / soar-server-linux-arm64 are uploaded there).
 SOAR_BINARY_BASES=(
-    "https://github.com/noelrubio143/aaa/releases/download/assets"
+    "https://github.com/noelrubio143/soars/releases/download/assets"
 )
 
 # Four independent soar instances share one binary (UDP/53 is split between
@@ -297,7 +297,7 @@ install_soar_server() {
         rm -f "$tmp"
         print_error "Failed to download soar-server-${asset} from the GitHub release."
         print_error "Upload soar-server-${asset} to:"
-        print_error "  https://github.com/noelrubio143/aaa/releases/tag/assets"
+        print_error "  https://github.com/noelrubio143/soars/releases/tag/assets"
         restart_after_install
         exit 1
     fi
