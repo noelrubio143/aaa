@@ -117,6 +117,52 @@ if [ -f /etc/openvpn/client-tcp.ovpn ]; then
     echo -e "Profile (paste in app):"
     cat /etc/openvpn/client-tcp.ovpn
     echo -e "$L"
+
+    # --- OpenVPN over DNS tunnel (NS shown here, same as SSH/Xray) ---
+    # Slipstream for OVPN (Menu > 5 > option 3)
+    OV_SLIP_CONF="/etc/slipstream-rust/slipstream-rust-ovpn.conf"
+    if [ -f "$OV_SLIP_CONF" ]; then
+        odom=$( . "$OV_SLIP_CONF" 2>/dev/null; echo "$DOMAIN" )
+        echo -e "\E[0;41;36m     CONFIG OVPN + SLIPSTREAM (DNS)     \E[0m"
+        echo -e "$L"
+        echo -e "NS Domain   : ${odom:-$domen}"
+        echo -e "Username    : $Login"
+        echo -e "Password    : $Pass"
+        echo -e "Note        : pick OVPN + Slipstream (DNS Tunnel) in the client app,"
+        echo -e "              use this domain as the NS/Domain. Same profile + login as above."
+        echo -e "$L"
+    fi
+    # VayDNS for OVPN (Menu > 6 > option 3)
+    OV_VAY_CONF="/etc/vaydns/vaydns-ovpn.conf"
+    if [ -f "$OV_VAY_CONF" ]; then
+        ovdom=$(grep '^DOMAIN=' "$OV_VAY_CONF" | cut -d'"' -f2)
+        ovpubf=$(grep '^PUBKEY_FILE=' "$OV_VAY_CONF" | cut -d'"' -f2)
+        echo -e "\E[0;41;36m      CONFIG OVPN + VAYDNS (DNS)        \E[0m"
+        echo -e "$L"
+        echo -e "NS Domain   : ${ovdom:-$domen}"
+        echo -e "Pubkey      : $(cat "$ovpubf" 2>/dev/null)"
+        echo -e "Username    : $Login"
+        echo -e "Password    : $Pass"
+        echo -e "Note        : pick OVPN + VayDNS (DNS Tunnel) in the client app,"
+        echo -e "              use this NS/Domain + the pubkey above. Same profile + login as above."
+        echo -e "$L"
+    fi
+    # Soar for OVPN (Menu > 7 > option 3)
+    OV_SOAR_CONF="/etc/soar/soar-ovpn.conf"
+    if [ -f "$OV_SOAR_CONF" ]; then
+        osdom=$(grep '^DOMAIN=' "$OV_SOAR_CONF" | cut -d'"' -f2)
+        ostgt=$(grep '^TARGET_PORT=' "$OV_SOAR_CONF" | cut -d'"' -f2)
+        echo -e "\E[0;41;36m       CONFIG OVPN + SOAR (DNS)         \E[0m"
+        echo -e "$L"
+        echo -e "NS Domain   : ${osdom:-$domen}"
+        echo -e "Pubkey      : $(cat /etc/soar/ovpn.pub 2>/dev/null)"
+        echo -e "Destination : 127.0.0.1:${ostgt:-1194}  (inside the tunnel)"
+        echo -e "Username    : $Login"
+        echo -e "Password    : $Pass"
+        echo -e "Note        : pick OVPN + Soar (DNS Tunnel) in the client app,"
+        echo -e "              use this NS/Domain + the pubkey above. Same profile + login as above."
+        echo -e "$L"
+    fi
 fi
 
 # Slipstream (DNS Tunnel) - shown only when it has been deployed (Menu > 5)
