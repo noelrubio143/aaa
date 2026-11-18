@@ -13,13 +13,13 @@ button{background:var(--ac);border:0;color:#000;font-weight:600}
 </style></head><body><div class="card">
 <h1>Free Trial Panel</h1>
 <p>Gumawa ng free trial account (SSH, OVPN, Xray). 3 days ang bawat account.</p>
-<!-- Optional: ilagay dito ang domain ng VPS mo para isang tap na lang -->
-<input id="h" placeholder="VPS domain (hal. sg1.example.com)" autocomplete="off">
+<!-- Optional: ilagay dito ang IP o domain ng VPS mo para isang tap na lang -->
+<input id="h" placeholder="VPS IP o domain (hal. 123.45.67.89)" autocomplete="off">
 <button id="go">Open Panel</button>
 <p id="m" style="margin:0"></p>
 </div>
 <script>
-const DEFAULT_HOST = "";   // <- ilagay ang domain ng VPS mo dito kung gusto mong naka-set na
+const DEFAULT_HOST = "";   // <- ilagay ang IP (o domain) ng VPS mo dito kung gusto mong naka-set na
 const PORT = 8090;
 const q = new URLSearchParams(location.search).get("h");
 let host = (q || DEFAULT_HOST || "").trim();
@@ -27,7 +27,7 @@ try { if (!host) host = localStorage.getItem("vps") || ""; } catch(e){}
 const clean = v => v.trim().replace(/^https?:\/\//,"").replace(/[\/:].*$/,"");
 function open_(h){
   h = clean(h);
-  if(!/^[a-zA-Z0-9.-]+$/.test(h)){ document.getElementById("m").textContent="Invalid domain"; return; }
+  if(!/^[a-zA-Z0-9.-]+$/.test(h)){ document.getElementById("m").textContent="Invalid IP/domain"; return; }
   try { localStorage.setItem("vps", h); } catch(e){}
   location.href = "http://" + h + ":" + PORT + "/";
 }
