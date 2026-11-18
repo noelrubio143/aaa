@@ -152,5 +152,20 @@ if [ -f "$VAY_CONF" ]; then
     echo -e "\033[0;34m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\033[0m"
 fi
 
+# Soar (DNS Tunnel) for SSH - shown only when it has been deployed (Menu > 7)
+SOAR_CONF="/etc/soar/soar-ssh.conf"
+if [ -f "$SOAR_CONF" ]; then
+    sdom=$(grep '^DOMAIN=' "$SOAR_CONF" | cut -d'"' -f2)
+    stgt=$(grep '^TARGET_PORT=' "$SOAR_CONF" | cut -d'"' -f2)
+    echo -e "\E[0;41;36m           CONFIG SOAR (DNS)            \E[0m"
+    echo -e "\033[0;34m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\033[0m"
+    echo -e "Domain      : ${sdom:-$domen}"
+    echo -e "Pubkey      : $(cat /etc/soar/ssh.pub 2>/dev/null)"
+    echo -e "Destination : 127.0.0.1:${stgt:-22}  (inside the tunnel)"
+    echo -e "Note        : pick Soar (DNS Tunnel) in the client app,"
+    echo -e "              use this domain as the Nameserver/Domain + the pubkey above."
+    echo -e "\033[0;34m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\033[0m"
+fi
+
 echo ""
 read -n 1 -s -r -p "Press any key to back on menu"

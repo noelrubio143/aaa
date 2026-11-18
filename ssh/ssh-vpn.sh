@@ -190,8 +190,15 @@ chmod +x /usr/local/bin/slipstream-rust-deploy
 wget -O /usr/local/bin/vaydns-deploy "https://raw.githubusercontent.com/noelrubio143/aaa/main/vaydns/vaydns-deploy.sh"
 chmod +x /usr/local/bin/vaydns-deploy
 
+# menu soar (DNS Tunnel) - same "$0 = install path" first-run pattern as the
+# two scripts above, so it also lives in /usr/local/bin. soar-server itself is
+# downloaded from the "assets" release the first time soar-deploy is run.
+wget -O /usr/local/bin/soar-deploy "https://raw.githubusercontent.com/noelrubio143/aaa/main/soar/soar-deploy.sh"
+chmod +x /usr/local/bin/soar-deploy
+
 # Slipstream (SSH + Xray) is managed from slipstream-rust-deploy (Menu > 5).
 # VayDNS (SSH + Xray) is managed from vaydns-deploy (Menu > 6).
+# Soar (standalone DNS tunnel, no SSH/Xray behind it) is managed from soar-deploy (Menu > 7).
 # UDP/53 is split between all installed instances by domain via iptables (no separate DNS router).
 
 # menu system
