@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Free Trial Account</title>
+<style>
+:root{--bg:#f5f5f7;--card:#fff;--tx:#1d1d1f;--mut:#6e6e73;--ac:#f59e0b}
+@media (prefers-color-scheme:dark){:root{--bg:#0f1115;--card:#1a1d24;--tx:#f2f2f2;--mut:#9a9aa3}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--tx);font-family:system-ui,sans-serif;display:flex;justify-content:center;padding:24px 16px}
+.wrap{width:100%;max-width:420px}.card{background:var(--card);border-radius:16px;padding:20px;margin-bottom:16px}
+h1{font-size:20px;margin:0 0 4px}h2{font-size:16px;margin:0 0 8px}p{color:var(--mut);font-size:14px;margin:0 0 14px}
+input,select,button{width:100%;padding:12px;margin-bottom:10px;border-radius:10px;border:1px solid #8884;background:transparent;color:inherit;font-size:16px}
+button{background:var(--ac);border:0;color:#000;font-weight:600}button.del{background:#e5484d;color:#fff}
+.hp{position:absolute;left:-9999px}
+pre{text-align:left;background:#8881;padding:12px;border-radius:10px;font-size:12px;white-space:pre-wrap;word-break:break-all;max-height:320px;overflow:auto}
+.err{color:#e5484d;font-size:14px}.exp{color:var(--mut);font-size:13px;margin-bottom:8px}
+</style></head><body><div class="wrap">
+<div class="card"><h1>Free Trial Account</h1>
+<p>Each account is valid for 3 days. Create as many as you need. Only you can see and delete your account on this device.</p>
+<input id="u" placeholder="Username (3-12 letters/numbers)" autocomplete="off">
+<select id="p"><option value="all">All (SSH + OVPN + Xray)</option><option value="ssh">SSH</option><option value="ovpn">OpenVPN</option><option value="vmess">VMess</option><option value="vless">VLESS</option><option value="trojan">Trojan</option></select>
+<input class="hp" id="w" tabindex="-1" autocomplete="off">
+<button id="b">Create Trial</button><div id="e" class="err"></div></div>
+<div id="mine"></div></div>
+<script>
+const $=id=>document.getElementById(id);
+async function post(url,obj){const r=await fetch(url,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(obj)});return [r.ok,await r.json()]}
+async function load(){
+  const list=await (await fetch("/api/mine")).json(); const box=$("mine"); box.textContent="";
+  for(const a of list){
+    const c=document.createElement("div");c.className="card";
+    const h=document.createElement("h2");h.textContent=a.user.replace("trial_","");
+    const x=document.createElement("div");x.className="exp";x.textContent="Expires: "+a.expires;
+    const pre=document.createElement("pre");pre.textContent=a.text;
+    const cp=document.createElement("button");cp.textContent="Copy";cp.onclick=()=>navigator.clipboard.writeText(a.text);
+    const d=document.createElement("button");d.textContent="Delete account";d.className="del";
+    d.onclick=async()=>{if(!confirm("Delete this account? This cannot be undone."))return;
+      const [ok,r]=await post("/api/delete",{user:a.user}); if(!ok)$("e").textContent=r.error; load();};
+    c.append(h,x,pre,cp,d);box.append(c);
+  }
+}
+$("b").onclick=async()=>{
+  $("e").textContent="";$("b").disabled=true;
+  try{const [ok,r]=await post("/api/trial",{username:$("u").value,protocol:$("p").value,website:$("w").value});
+    if(!ok)$("e").textContent=r.error; else $("u").value="";
+    await load();
+  }catch(e){$("e").textContent="Network error"}
+  $("b").disabled=false;
+};
+load();
+</script></body></html>

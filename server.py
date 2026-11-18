@@ -6,7 +6,7 @@ import hashlib, hmac, json, os, re, secrets, subprocess, threading, time, pwd, u
 from datetime import datetime
 from http.server import ThreadingHTTPServer, BaseHTTPRequestHandler
 
-BIND, PORT = "127.0.0.1", int(os.environ.get("PORT", 8090))
+BIND, PORT = os.environ.get("BIND", "127.0.0.1"), int(os.environ.get("PORT", 8090))
 DB_FILE = os.environ.get("DB_FILE", "/var/lib/trial-portal/db.json")
 XRAY_CONF = os.environ.get("XRAY_CONF", "/etc/xray/config.json")
 SSH_DB = os.environ.get("SSH_DB", "/etc/ssh-accounts")
@@ -226,7 +226,7 @@ class H(BaseHTTPRequestHandler):
                                  "expires": datetime.fromtimestamp(m["exp"]).strftime("%Y-%m-%d %H:%M")})
                             it["texts"].append(m["text"])
             return self.send(200, json.dumps([{"user": i["user"], "expires": i["expires"], "text": "\n\n".join(i["texts"])} for i in items.values()]))
-        if path == "/": return self.send(200, open(os.path.join(HERE, "index.html"), "rb").read(), "text/html; charset=utf-8")
+        if path == "/": return self.send(200, open(os.path.join(HERE, "panel.html"), "rb").read(), "text/html; charset=utf-8")
         self.err(404, "Not found")
 
     def do_POST(self):
