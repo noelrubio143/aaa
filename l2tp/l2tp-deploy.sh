@@ -107,6 +107,50 @@ do_disable() {
     print_status "Disabled."
 }
 
+# Plain L2TP (NO IPsec) for routers/clients that only have an "L2TP VPN client"
+# form (LNS address, tunnel password, PPP user/pass). Not encrypted - the L2TP
+# tunnel itself carries no encryption without IPsec. Use option 1 (reinstall)
+# to go back to IPsec-only.
+do_plain() {
+    load_conf
+    if [ -z "$PSK" ]; then print_warning "Install the server first (option 1)."; return; fi
+    print_warning "Plain L2TP has NO encryption. Continue only if your device cannot use IPsec."
+    read -rp "Enable plain L2TP (no IPsec)? (y/N): " a
+    [[ "$a" =~ ^[Yy]$ ]] || return
+
+    # 1) remove the rule that drops L2TP (udp/1701) not protected by IPsec
+    while iptables -D INPUT -p udp --dport 1701 -m policy --dir in --pol none -j DROP 2>/dev/null; do :; done
+    while iptables -D INPUT -p udp -m udp --dport 1701 -m policy --dir in --pol none -j DROP 2>/dev/null; do :; done
+    # ...and from the saved copies so it stays off after a reboot
+    for f in /etc/iptables.rules /etc/iptables/rules.v4 /etc/sysconfig/iptables /etc/rc.local; do
+        [ -f "$f" ] && sed -i '/1701.*--pol none.*DROP/d' "$f"
+    done
+
+    # 2) accept PAP/CHAP/MS-CHAP (not only MS-CHAPv2) - many routers use "Auto"
+    if [ -f /etc/ppp/options.xl2tpd ]; then
+        cp -n /etc/ppp/options.xl2tpd /etc/ppp/options.xl2tpd.ipsec-bak
+        sed -i 's/^+mschap-v2/#+mschap-v2/; s/^require-mschap-v2/#require-mschap-v2/' /etc/ppp/options.xl2tpd
+    fi
+
+    # 3) tunnel password = the PSK (only used if the router sends one)
+    printf '* * %s\n' "$PSK" > /etc/xl2tpd/l2tp-secrets
+    chmod 600 /etc/xl2tpd/l2tp-secrets
+
+    systemctl restart xl2tpd 2>/dev/null
+    local ip; ip=$(get_ip)
+    echo "-------------------------------------------------"
+    echo " Router (L2TP VPN client):"
+    echo "  LNS address     : ${ip}"
+    echo "  Tunnel password : ${PSK}   (or leave blank)"
+    echo "  PPP user name   : ${VUSER}"
+    echo "  PPP password    : ${VPASS}"
+    echo "  Authentication  : Auto"
+    echo " Ports: UDP 1701 must be open on the VPS firewall."
+    echo "-------------------------------------------------"
+    command -v ufw >/dev/null 2>&1 && ufw status | grep -q "Status: active" && ufw allow 1701/udp >/dev/null
+    print_status "Plain L2TP enabled. Check logs: journalctl -u xl2tpd -e"
+}
+
 while true; do
     clear
     echo -e "\e[1;34m              L2TP / IPSEC (PSK)              \e[0m"
@@ -117,6 +161,7 @@ while true; do
     echo " 4) Stop service"
     echo " 5) Update scripts from assets (re-download)"
     echo " 6) Disable services"
+    echo " 7) Enable plain L2TP (no IPsec, for routers)"
     echo " x) Back"
     echo -e "\e[1;33m -------------------------------------------------\e[0m"
     read -rp " Select : " o
@@ -128,6 +173,7 @@ while true; do
         4) do_stop; pause ;;
         5) fetch_scripts && print_status "Scripts updated. Use option 1 to reinstall."; pause ;;
         6) do_disable; pause ;;
+        7) do_plain; pause ;;
         x|X) exit 0 ;;
         *) echo "Invalid selection"; sleep 1 ;;
     esac
