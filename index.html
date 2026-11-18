@@ -51,9 +51,7 @@ function render(){
     if (mine) {
       const c = document.createElement("button"); c.className = "alt"; c.textContent = "Copy line"; c.title = "Para sa servers.json sa GitHub";
       c.onclick = () => { navigator.clipboard.writeText(JSON.stringify({name: s.name || s.host, host: s.host})); $("m").textContent = "Na-copy. Idagdag sa servers.json sa GitHub para makita ng lahat."; };
-      const x = document.createElement("button"); x.className = "alt"; x.textContent = "×";
-      x.onclick = () => { setLocal(getLocal().filter(v => v.host !== s.host)); render(); };
-      row.append(c, x);
+      row.append(c);
     }
     box.append(row);
   };
