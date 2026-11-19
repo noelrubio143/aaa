@@ -196,21 +196,9 @@ chmod +x /usr/local/bin/vaydns-deploy
 wget -O /usr/local/bin/soar-deploy "https://raw.githubusercontent.com/noelrubio143/aaa/main/soar/soar-deploy.sh"
 chmod +x /usr/local/bin/soar-deploy
 
-# menu pingtunnel (ICMP tunnel) - binary comes from the "assets" release of
-# noelrubio143/aaa the first time pingtunnel-deploy is run.
-wget -O /usr/local/bin/pingtunnel-deploy "https://raw.githubusercontent.com/noelrubio143/aaa/main/pingtunnel/pingtunnel-deploy.sh"
-chmod +x /usr/local/bin/pingtunnel-deploy
-
-# menu L2TP/IPsec (PSK) - setup scripts come from the "assets" release of
-# noelrubio143/aaa the first time l2tp-deploy is run (Menu > 9).
-wget -O /usr/local/bin/l2tp-deploy "https://raw.githubusercontent.com/noelrubio143/aaa/main/l2tp/l2tp-deploy.sh"
-sed -i -e 's/\r$//' /usr/local/bin/l2tp-deploy
-chmod +x /usr/local/bin/l2tp-deploy
-
 # Slipstream (SSH + Xray) is managed from slipstream-rust-deploy (Menu > 5).
 # VayDNS (SSH + Xray) is managed from vaydns-deploy (Menu > 6).
 # Soar (standalone DNS tunnel, no SSH/Xray behind it) is managed from soar-deploy (Menu > 7).
-# Pingtunnel (ICMP tunnel) is managed from pingtunnel-deploy (Menu > 8).
 # UDP/53 is split between all installed instances by domain via iptables (no separate DNS router).
 
 # menu system
